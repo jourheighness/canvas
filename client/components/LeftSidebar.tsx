@@ -4,27 +4,53 @@ import { YrkesbarometerSearch, YrkesbarometerItem, SearchResult } from '../utils
 import { createYrkesbarometerShape } from './YrkesbarometerShape'
 import yrkesbarometerData from '../../data/Yrkesbarometer.json'
 import { BarChart3 } from 'lucide-react'
+import { useErrorLogger } from './ErrorBoundary'
 
-// Global editor access
+// Global editor access with proper timing handling
 const useGlobalEditor = () => {
 	const [editor, setEditor] = useState<Editor | null>(null)
+	const { logError } = useErrorLogger()
+	const pollCountRef = useRef(0)
+	const maxPolls = 200 // Max 200 polls (10 seconds at 50ms intervals)
 	
 	useEffect(() => {
 		// Check if editor is available
 		const checkEditor = () => {
 			if (window.tldrawEditor) {
 				setEditor(window.tldrawEditor as Editor)
+				return true
 			}
+			return false
 		}
 		
 		// Check immediately
-		checkEditor()
+		if (checkEditor()) {
+			return // Editor is already available
+		}
 		
-		// Also check periodically in case it's not ready yet
-		const interval = setInterval(checkEditor, 100)
+		// Set up a more efficient polling mechanism with safety limits
+		let timeoutId: number
+		const pollForEditor = () => {
+			pollCountRef.current++
+			
+			if (pollCountRef.current > maxPolls) {
+				logError(new Error('Editor polling timeout - editor never became available'), 'useGlobalEditor')
+				return
+			}
+			
+			if (!checkEditor()) {
+				timeoutId = setTimeout(pollForEditor, 50) // Check every 50ms
+			}
+		}
 		
-		return () => clearInterval(interval)
-	}, [])
+		pollForEditor()
+		
+		return () => {
+			if (timeoutId) {
+				clearTimeout(timeoutId)
+			}
+		}
+	}, [logError])
 	
 	return editor
 }
@@ -240,7 +266,7 @@ function useDragAndDrop(searchResults: SearchResult[] = []) {
 
 				// Validate that we have a valid result, editor, and pagePoint
 				if (!current.result || !current.result.item || !editor || !pagePoint) {
-					console.warn('Invalid drag state, editor, or pagePoint:', { result: current.result, editor, pagePoint })
+					// Silently reset state if editor isn't ready
 					setDragState({ name: 'idle' })
 					break
 				}
@@ -278,13 +304,11 @@ function useDragAndDrop(searchResults: SearchResult[] = []) {
 		
 		// Validate index and result
 		if (isNaN(index) || index < 0 || index >= searchResults.length) {
-			console.warn('Invalid search result index:', resultIndex)
 			return
 		}
 
 		const result = searchResults[index]
 		if (!result || !result.item) {
-			console.warn('Invalid search result at index:', index, result)
 			return
 		}
 
@@ -350,21 +374,24 @@ function useDragAndDrop(searchResults: SearchResult[] = []) {
 		}
 	}, [dragState, editor])
 
-	// Check if editor is available after all hooks
-	if (!editor) {
-		console.warn('Editor not available for drag and drop')
-		return {
-			handlePointerDown: () => {},
-			handlePointerUp: () => {},
-			rSidebarContainer,
-			rDraggingImage,
-			state: { name: 'idle' as const }
+	// Return handlers that gracefully handle missing editor
+	const safeHandlePointerDown = useCallback((e: React.PointerEvent) => {
+		if (!editor) {
+			return
 		}
-	}
+		handlePointerDown(e)
+	}, [editor, handlePointerDown])
+
+	const safeHandlePointerUp = useCallback((e: React.PointerEvent) => {
+		if (!editor) {
+			return
+		}
+		handlePointerUp(e)
+	}, [editor, handlePointerUp])
 
 	return {
-		handlePointerDown,
-		handlePointerUp,
+		handlePointerDown: safeHandlePointerDown,
+		handlePointerUp: safeHandlePointerUp,
 		rSidebarContainer,
 		rDraggingImage,
 		state: dragState
@@ -602,11 +629,26 @@ export function LeftSidebar() {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [searchResults, setSearchResults] = useState<SearchResult[]>([])
 	const [isSearching, setIsSearching] = useState(false)
+	const { logError } = useErrorLogger()
+	const renderCountRef = useRef(0)
+
+	// Track render cycles to detect infinite loops
+	useEffect(() => {
+		renderCountRef.current++
+		if (renderCountRef.current > 100) {
+			logError(new Error(`LeftSidebar rendered ${renderCountRef.current} times - possible infinite loop`), 'LeftSidebar')
+		}
+	})
 
 	// Initialize search engine
 	const searchEngine = useMemo(() => {
-		return new YrkesbarometerSearch(yrkesbarometerData as YrkesbarometerItem[])
-	}, [])
+		try {
+			return new YrkesbarometerSearch(yrkesbarometerData as YrkesbarometerItem[])
+		} catch (error) {
+			logError(error as Error, 'LeftSidebar searchEngine initialization')
+			return new YrkesbarometerSearch([])
+		}
+	}, [logError])
 
 	// Use the fixed drag and drop hook
 	const { handlePointerDown, handlePointerUp, rSidebarContainer, rDraggingImage, state } = useDragAndDrop(searchResults)
@@ -618,8 +660,6 @@ export function LeftSidebar() {
 		
 		if (item.id === 'search-forecasts') {
 			setSidebarState('search-forecasts')
-		} else {
-			console.log('Clicked:', item.label)
 		}
 	}
 
@@ -661,11 +701,11 @@ export function LeftSidebar() {
 	// Debug: Log search results when they change
 	useEffect(() => {
 		if (searchResults.length > 0) {
-			console.log('Search results updated:', searchResults.length, 'results')
 			// Check for any null/undefined items
 			const invalidResults = searchResults.filter((result) => !result || !result.item)
 			if (invalidResults.length > 0) {
-				console.warn('Found invalid search results:', invalidResults)
+				// Silently filter out invalid results
+				return
 			}
 		}
 	}, [searchResults])

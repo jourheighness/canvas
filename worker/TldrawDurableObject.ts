@@ -31,7 +31,7 @@ export class TldrawDurableObject {
 
 	private readonly router = AutoRouter({
 		catch: (e) => {
-			console.log(e)
+			console.log('Router error:', e)
 			return error(e)
 		},
 	})
@@ -43,6 +43,32 @@ export class TldrawDurableObject {
 				})
 			}
 			return this.handleConnect(request)
+		})
+		.post('/api/log-error', async (request) => {
+			try {
+				const errorData = await request.json() as {
+					error: string
+					stack: string
+					context: string
+					timestamp: string
+					userAgent: string
+					url: string
+				}
+				console.log('Client error logged:', {
+					error: errorData.error,
+					stack: errorData.stack,
+					context: errorData.context,
+					timestamp: errorData.timestamp,
+					userAgent: errorData.userAgent,
+					url: errorData.url,
+					roomId: this.roomId,
+					loggedAt: new Date().toISOString()
+				})
+				return new Response('OK', { status: 200 })
+			} catch (e) {
+				console.error('Failed to log client error:', e)
+				return new Response('Error', { status: 500 })
+			}
 		})
 
 	fetch(request: Request): Response | Promise<Response> {

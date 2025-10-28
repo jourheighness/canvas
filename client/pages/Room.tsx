@@ -8,6 +8,7 @@ import { RoomWrapper } from '../components/RoomWrapper'
 import { CustomDotGrid } from '../components/CustomDotGrid'
 import { ChecklistShapeUtil } from '../shapes/ChecklistShape'
 import { YrkesbarometerShapeUtil } from '../shapes/YrkesbarometerShape'
+import { ErrorBoundary, useErrorLogger } from '../components/ErrorBoundary'
 
 declare global {
 	interface Window {
@@ -28,6 +29,7 @@ const customShapeUtils = [ChecklistShapeUtil, YrkesbarometerShapeUtil]
 
 export function Room() {
 	const { roomId } = useParams<{ roomId: string }>()
+	const { logError } = useErrorLogger()
 
 	const store = useSyncDemo({
 		roomId: roomId || 'default-room',
@@ -57,21 +59,50 @@ export function Room() {
 		return () => document.removeEventListener('keydown', handleKeyDown)
 	}, [])
 
+	// Add error logging for unhandled errors
+	useEffect(() => {
+		const handleError = (event: ErrorEvent) => {
+			logError(new Error(event.message), 'Global error handler')
+		}
+
+		const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+			logError(new Error(event.reason), 'Unhandled promise rejection')
+		}
+
+		window.addEventListener('error', handleError)
+		window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
+		return () => {
+			window.removeEventListener('error', handleError)
+			window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+		}
+	}, [logError])
+
 	return (
 		<RoomWrapper roomId={roomId}>
-			<Tldraw
-				store={store}
-				deepLinks
-				hideUi={true}
-				components={components}
-				shapeUtils={customShapeUtils}
-				onMount={(editor) => {
-					editor.updateInstanceState({ isGridMode: true })
-					editor.user.updateUserPreferences({ isSnapMode: false })
-					window.tldrawEditor = editor
-				}}
-			/>
-			<LeftSidebar />
+			<ErrorBoundary>
+				<Tldraw
+					store={store}
+					deepLinks
+					hideUi={true}
+					components={components}
+					shapeUtils={customShapeUtils}
+					licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY}
+					onMount={(editor) => {
+						try {
+							editor.updateInstanceState({ isGridMode: true })
+							editor.user.updateUserPreferences({ isSnapMode: false })
+							window.tldrawEditor = editor
+							console.log('Editor mounted successfully')
+						} catch (error) {
+							logError(error as Error, 'Editor onMount')
+						}
+					}}
+				/>
+			</ErrorBoundary>
+			<ErrorBoundary>
+				<LeftSidebar />
+			</ErrorBoundary>
 		</RoomWrapper>
 	)
 }
