@@ -7,7 +7,26 @@ import { BarChart3 } from 'lucide-react'
 
 // Global editor access
 const useGlobalEditor = () => {
-	return window.tldrawEditor as Editor
+	const [editor, setEditor] = useState<Editor | null>(null)
+	
+	useEffect(() => {
+		// Check if editor is available
+		const checkEditor = () => {
+			if (window.tldrawEditor) {
+				setEditor(window.tldrawEditor as Editor)
+			}
+		}
+		
+		// Check immediately
+		checkEditor()
+		
+		// Also check periodically in case it's not ready yet
+		const interval = setInterval(checkEditor, 100)
+		
+		return () => clearInterval(interval)
+	}, [])
+	
+	return editor
 }
 
 // Types
@@ -219,9 +238,9 @@ function useDragAndDrop(searchResults: SearchResult[] = []) {
 				const screenPoint = new Vec(e.clientX, e.clientY)
 				const pagePoint = editor?.screenToPage(screenPoint)
 
-				// Validate that we have a valid result and editor
-				if (!current.result || !current.result.item || !editor) {
-					console.warn('Invalid drag state or editor:', { result: current.result, editor })
+				// Validate that we have a valid result, editor, and pagePoint
+				if (!current.result || !current.result.item || !editor || !pagePoint) {
+					console.warn('Invalid drag state, editor, or pagePoint:', { result: current.result, editor, pagePoint })
 					setDragState({ name: 'idle' })
 					break
 				}
