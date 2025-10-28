@@ -36,19 +36,16 @@ export function Room() {
 		shapeUtils: customShapeUtils,
 	})
 
-	// Get license key from environment variables (Cloudflare Workers + Vite)
-	const licenseKey = process.env.VITE_TLDRAW_LICENSE_KEY || 
-		process.env.TLDRAW_LICENSE_KEY ||
-		undefined
+	// Get license key from build-time environment variables
+	const licenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY || undefined
 
 	// Debug license key
 	useEffect(() => {
 		console.log('License key check:', {
-			VITE_TLDRAW_LICENSE_KEY: process.env.VITE_TLDRAW_LICENSE_KEY,
-			TLDRAW_LICENSE_KEY: process.env.TLDRAW_LICENSE_KEY,
+			VITE_TLDRAW_LICENSE_KEY: import.meta.env.VITE_TLDRAW_LICENSE_KEY,
 			finalLicenseKey: licenseKey,
 			hasLicenseKey: !!licenseKey,
-			allProcessEnv: process.env
+			allEnvVars: import.meta.env
 		})
 	}, [licenseKey])
 
