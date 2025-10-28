@@ -36,6 +36,22 @@ export function Room() {
 		shapeUtils: customShapeUtils,
 	})
 
+	// Get license key from environment variables (Cloudflare Workers + Vite)
+	const licenseKey = process.env.VITE_TLDRAW_LICENSE_KEY || 
+		process.env.TLDRAW_LICENSE_KEY ||
+		undefined
+
+	// Debug license key
+	useEffect(() => {
+		console.log('License key check:', {
+			VITE_TLDRAW_LICENSE_KEY: process.env.VITE_TLDRAW_LICENSE_KEY,
+			TLDRAW_LICENSE_KEY: process.env.TLDRAW_LICENSE_KEY,
+			finalLicenseKey: licenseKey,
+			hasLicenseKey: !!licenseKey,
+			allProcessEnv: process.env
+		})
+	}, [licenseKey])
+
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const editor = window.tldrawEditor
@@ -87,7 +103,7 @@ export function Room() {
 					hideUi={true}
 					components={components}
 					shapeUtils={customShapeUtils}
-					licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY}
+					licenseKey={licenseKey}
 					onMount={(editor) => {
 						try {
 							editor.updateInstanceState({ isGridMode: true })

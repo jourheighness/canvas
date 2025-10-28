@@ -29,7 +29,7 @@ const useGlobalEditor = () => {
 		}
 		
 		// Set up a more efficient polling mechanism with safety limits
-		let timeoutId: number
+		let timeoutId: ReturnType<typeof setTimeout>
 		const pollForEditor = () => {
 			pollCountRef.current++
 			

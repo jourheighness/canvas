@@ -9,5 +9,9 @@ export default defineConfig(() => {
 		css: {
 			postcss: './postcss.config.js',
 		},
+		define: {
+			'process.env.VITE_TLDRAW_LICENSE_KEY': JSON.stringify(process.env.VITE_TLDRAW_LICENSE_KEY),
+			'process.env.TLDRAW_LICENSE_KEY': JSON.stringify(process.env.TLDRAW_LICENSE_KEY)
+		}
 	}
 })
