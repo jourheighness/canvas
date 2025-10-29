@@ -558,7 +558,7 @@ function SearchView({
 												data-result_index={index}
 												onPointerDown={isValid ? searchResultPointerDown(handlePointerDown) : undefined}
 												onPointerUp={isValid ? handlePointerUp : undefined}
-												title={isValid ? "Dra till canvas för att skapa yrkesbarometer-kort" : "Ogiltigt resultat - kan inte dras"}
+												title={isValid ? "Dra till TRR Canvas för att skapa yrkesbarometer-kort" : "Ogiltigt resultat - kan inte dras"}
 											>
 												<div className="font-semibold text-gray-800 mb-2 text-base">
 													{result.item.yb_yrke}
@@ -605,7 +605,7 @@ function SearchView({
 													<svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 													</svg>
-													{isValid ? "Dra till canvas för att skapa kort" : "Ogiltigt resultat"}
+													{isValid ? "Dra till TRR Canvas för att skapa kort" : "Ogiltigt resultat"}
 												</div>
 											</div>
 										)
